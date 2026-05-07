@@ -4,7 +4,7 @@ import { dashboardParams } from '../utils/dateFilters';
 
 export const investmentService = {
   list: async (month?: string) => {
-    const response = await apiClient.get<Investment[]>('/investments', {
+    const response = await apiClient.get<Investment[]>('/api/investments', {
       params: month ? dashboardParams(month) : undefined,
     });
     return response.data;
@@ -18,10 +18,10 @@ export const investmentService = {
     purchase_date: string;
     notes?: string;
   }) => {
-    const response = await apiClient.post<Investment>('/investments', data);
+    const response = await apiClient.post<Investment>('/api/investments', data);
     return response.data;
   },
   delete: async (id: string) => {
-    await apiClient.delete(`/investments/${id}`);
+    await apiClient.delete(`/api/investments/${id}`);
   },
 };

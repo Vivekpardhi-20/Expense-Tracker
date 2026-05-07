@@ -4,7 +4,7 @@ import { dashboardParams } from '../utils/dateFilters';
 
 export const lentMoneyService = {
   list: async (month?: string) => {
-    const response = await apiClient.get<LentMoney[]>('/lent-money', {
+    const response = await apiClient.get<LentMoney[]>('/api/lent-money', {
       params: month ? dashboardParams(month) : undefined,
     });
     return response.data;
@@ -17,14 +17,14 @@ export const lentMoneyService = {
     expected_return_date?: string;
     notes?: string;
   }) => {
-    const response = await apiClient.post<LentMoney>('/lent-money', data);
+    const response = await apiClient.post<LentMoney>('/api/lent-money', data);
     return response.data;
   },
   markReturned: async (id: string) => {
-    const response = await apiClient.post<LentMoney>(`/lent-money/${id}/mark-returned`);
+    const response = await apiClient.post<LentMoney>(`/api/lent-money/${id}/mark-returned`);
     return response.data;
   },
   delete: async (id: string) => {
-    await apiClient.delete(`/lent-money/${id}`);
+    await apiClient.delete(`/api/lent-money/${id}`);
   },
 };

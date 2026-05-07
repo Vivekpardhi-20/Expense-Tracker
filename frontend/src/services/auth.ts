@@ -2,7 +2,7 @@ import apiClient from './api';
 
 export const authService = {
   login: async (email: string, password: string) => {
-    const response = await apiClient.post('/auth/login', { email, password });
+    const response = await apiClient.post('/api/auth/login', { email, password });
     if (response.data.access_token) {
       localStorage.setItem('access_token', response.data.access_token);
     }
@@ -16,7 +16,7 @@ export const authService = {
     first_name: string;
     last_name: string;
   }) => {
-    const response = await apiClient.post('/auth/register', data);
+    const response = await apiClient.post('/api/auth/register', data);
     return response.data;
   },
 
@@ -25,7 +25,7 @@ export const authService = {
   },
 
   getCurrentUser: async () => {
-    const response = await apiClient.get('/auth/me');
+    const response = await apiClient.get('/api/auth/me');
     return response.data;
   },
 };
