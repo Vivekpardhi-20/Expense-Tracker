@@ -55,6 +55,22 @@ def create_investment(
     db.refresh(investment)
     return investment
 
+@router.put("/{investment_id}", response_model=InvestmentResponse)
+def update_investment(
+    investment_id: str,
+    payload: InvestmentCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    investment = db.query(Investment).filter(Investment.id == investment_id, Investment.user_id == current_user["sub"]).first()
+    if not investment:
+        raise HTTPException(status_code=404, detail="Investment not found")
+    for key, value in payload.dict().items():
+        setattr(investment, key, value)
+    db.commit()
+    db.refresh(investment)
+    return investment
+
 
 @router.delete("/{investment_id}")
 def delete_investment(investment_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):

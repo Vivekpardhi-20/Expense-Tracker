@@ -24,6 +24,17 @@ export const lentMoneyService = {
     const response = await apiClient.post<LentMoney>(`/api/lent-money/${id}/mark-returned`);
     return response.data;
   },
+  update: async (id: string, data: {
+    person_name: string;
+    amount: number;
+    payment_mode: string;
+    given_date: string;
+    expected_return_date?: string;
+    notes?: string;
+  }) => {
+    const response = await apiClient.put<LentMoney>(`/api/lent-money/${id}`, data);
+    return response.data;
+  },
   delete: async (id: string) => {
     await apiClient.delete(`/api/lent-money/${id}`);
   },

@@ -72,6 +72,22 @@ def mark_returned(
     db.refresh(entry)
     return entry
 
+@router.put("/{entry_id}", response_model=LentMoneyResponse)
+def update_lent_money(
+    entry_id: str,
+    payload: LentMoneyCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    entry = db.query(LentMoney).filter(LentMoney.id == entry_id, LentMoney.user_id == current_user["sub"]).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Lent money entry not found")
+    for key, value in payload.dict().items():
+        setattr(entry, key, value)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
 
 @router.delete("/{entry_id}")
 def delete_lent_money(entry_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
