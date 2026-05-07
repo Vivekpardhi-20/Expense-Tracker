@@ -50,8 +50,11 @@ class Budget(Base):
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"))
     category_id = Column(String, ForeignKey("categories.id"))
+    category_name = Column(String, nullable=True)
+    amount = Column(Float, nullable=True)
     limit_amount = Column(Float)
     month = Column(String)
+    year = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -66,6 +69,61 @@ class RecurringExpense(Base):
     start_date = Column(DateTime)
     end_date = Column(DateTime, nullable=True)
     description = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class RecurringTransaction(Base):
+    __tablename__ = "recurring_transactions"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    type = Column(String)
+    title = Column(String)
+    category = Column(String, nullable=True)
+    amount = Column(Float)
+    payment_mode = Column(String, nullable=True)
+    frequency = Column(String)
+    start_date = Column(DateTime)
+    next_due_date = Column(DateTime)
+    status = Column(String, default="ACTIVE")
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    name = Column(String)
+    target_amount = Column(Float)
+    current_amount = Column(Float, default=0)
+    target_date = Column(DateTime)
+    status = Column(String, default="ACTIVE")
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class GoalContribution(Base):
+    __tablename__ = "goal_contributions"
+
+    id = Column(String, primary_key=True, index=True)
+    goal_id = Column(String, ForeignKey("goals.id"))
+    user_id = Column(String, ForeignKey("users.id"))
+    amount = Column(Float)
+    contribution_date = Column(DateTime)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), unique=True)
+    currency = Column(String, default="INR")
+    theme = Column(String, default="light")
+    monthly_income_target = Column(Float, default=0)
+    monthly_budget_target = Column(Float, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

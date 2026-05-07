@@ -59,7 +59,6 @@ def create_lent_money(
 @router.post("/{entry_id}/mark-returned", response_model=LentMoneyResponse)
 def mark_returned(
     entry_id: str,
-    create_income: bool = True,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -69,19 +68,6 @@ def mark_returned(
     if entry.status != "RETURNED":
         entry.status = "RETURNED"
         entry.returned_date = datetime.utcnow()
-        if create_income:
-            db.add(
-                Income(
-                    id=str(uuid.uuid4()),
-                    user_id=current_user["sub"],
-                    source="Money Returned",
-                    title=f"Money returned by {entry.person_name}",
-                    amount=entry.amount,
-                    date=entry.returned_date,
-                    description="Money Returned",
-                    notes=entry.notes,
-                )
-            )
     db.commit()
     db.refresh(entry)
     return entry

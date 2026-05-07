@@ -81,8 +81,11 @@ class IncomeResponse(IncomeBase):
 
 class BudgetBase(BaseModel):
     category_id: str
+    category_name: Optional[str] = None
+    amount: Optional[float] = None
     limit_amount: float = Field(gt=0)
     month: str
+    year: Optional[int] = None
 
 class BudgetCreate(BudgetBase):
     pass
@@ -150,6 +153,11 @@ class LentMoneyResponse(LentMoneyBase):
     class Config:
         from_attributes = True
 
+class BudgetDetailResponse(BudgetResponse):
+    spent: float = 0
+    remaining: float = 0
+    percentage: float = 0
+
 class InvestmentBase(BaseModel):
     investment_type: str
     investment_name: str
@@ -168,3 +176,69 @@ class InvestmentResponse(InvestmentBase):
 
     class Config:
         from_attributes = True
+
+class RecurringBase(BaseModel):
+    type: str
+    title: str
+    category: Optional[str] = None
+    amount: float = Field(gt=0)
+    payment_mode: Optional[str] = None
+    frequency: str
+    start_date: datetime
+    next_due_date: datetime
+    status: str = "ACTIVE"
+    notes: Optional[str] = None
+
+class RecurringCreate(RecurringBase):
+    pass
+
+class RecurringResponse(RecurringBase):
+    id: str
+    user_id: str
+
+    class Config:
+        from_attributes = True
+
+class GoalBase(BaseModel):
+    name: str
+    target_amount: float = Field(gt=0)
+    current_amount: float = 0
+    target_date: datetime
+    status: str = "ACTIVE"
+    notes: Optional[str] = None
+
+class GoalCreate(GoalBase):
+    pass
+
+class GoalResponse(GoalBase):
+    id: str
+    user_id: str
+    progress_percentage: float = 0
+
+class GoalContributionCreate(BaseModel):
+    amount: float = Field(gt=0)
+    contribution_date: datetime
+    notes: Optional[str] = None
+
+class PreferenceBase(BaseModel):
+    currency: str = "INR"
+    theme: str = "light"
+    monthly_income_target: float = 0
+    monthly_budget_target: float = 0
+
+class PreferenceResponse(PreferenceBase):
+    id: str
+    user_id: str
+
+    class Config:
+        from_attributes = True
+
+class ProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    username: str
+    email: EmailStr
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str

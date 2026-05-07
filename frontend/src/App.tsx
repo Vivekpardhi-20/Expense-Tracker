@@ -5,9 +5,13 @@ import { AddExpense } from './pages/AddExpense';
 import { Expenses } from './pages/Expenses';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Reports } from './pages/Reports';
-import { PlaceholderPage } from './pages/PlaceholderPage';
 import { AuthPage } from './pages/AuthPage';
 import { Categories } from './pages/Categories';
+import { Budgets } from './pages/Budgets';
+import { CalendarPage } from './pages/CalendarPage';
+import { Recurring } from './pages/Recurring';
+import { Goals } from './pages/Goals';
+import { Settings } from './pages/Settings';
 import './index.css';
 
 export type PageType =
@@ -40,15 +44,15 @@ function AppShell() {
       case 'categories':
         return <Categories />;
       case 'budgets':
-        return <PlaceholderPage title="Budgets" description="Set monthly limits and monitor category usage." />;
+        return <Budgets />;
       case 'calendar':
-        return <PlaceholderPage title="Calendar" description="Review expenses by day, week, and month." />;
+        return <CalendarPage />;
       case 'recurring':
-        return <PlaceholderPage title="Recurring Expenses" description="Track subscriptions, bills, EMIs, and repeating payments." />;
+        return <Recurring />;
       case 'goals':
-        return <PlaceholderPage title="Goals" description="Plan savings targets and progress toward financial goals." />;
+        return <Goals />;
       case 'settings':
-        return <PlaceholderPage title="Settings" description="Configure account, currency, notifications, and security." />;
+        return <Settings />;
       default:
         return <Dashboard />;
     }

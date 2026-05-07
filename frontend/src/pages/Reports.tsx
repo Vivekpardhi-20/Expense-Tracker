@@ -56,7 +56,12 @@ export const Reports: React.FC = () => {
   const markReturned = async (id: string) => {
     const updated = await lentMoneyService.markReturned(id);
     setLentMoney((entries) => entries.map((entry) => (entry.id === id ? updated : entry)));
-    setStats((current) => ({ ...current, receivable_amount: Math.max(0, current.receivable_amount - updated.amount), total_income: current.total_income + updated.amount, savings: current.savings + updated.amount }));
+    setStats((current) => ({
+      ...current,
+      receivable_amount: Math.max(0, current.receivable_amount - updated.amount),
+      total_expenses: Math.max(0, current.total_expenses - updated.amount),
+      savings: current.savings + updated.amount,
+    }));
   };
 
   return (

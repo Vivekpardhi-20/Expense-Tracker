@@ -1,10 +1,14 @@
 import axios from 'axios';
 
-const rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
+const isLocalHost =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
+const rawApiUrl = import.meta.env.VITE_API_URL || (isLocalHost ? 'http://localhost:8000' : '');
 const API_BASE_URL = rawApiUrl.replace(/\/+$/, '').replace(/\/api$/, '');
 
 if (!API_BASE_URL) {
-  throw new Error('VITE_API_URL is required in production.');
+  throw new Error('VITE_API_URL is required when the frontend is deployed.');
 }
 
 const apiClient = axios.create({

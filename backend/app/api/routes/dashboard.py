@@ -47,19 +47,48 @@ def get_stats(
     prev_date = (start - timedelta(days=1)).strftime("%Y-%m")
     prev_start, prev_end, _ = month_bounds(prev_date)
     
-    # Current month expenses
-    current_expenses = db.query(func.sum(Expense.amount)).filter(
+    normal_expenses = db.query(func.sum(Expense.amount)).filter(
         Expense.user_id == current_user["sub"],
         Expense.date >= start,
         Expense.date < end
     ).scalar() or 0
+
+    pending_lent_expenses = db.query(func.sum(LentMoney.amount)).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "PENDING",
+        LentMoney.given_date >= start,
+        LentMoney.given_date < end
+    ).scalar() or 0
+
+    investment_outflow = db.query(func.sum(Investment.amount_invested)).filter(
+        Investment.user_id == current_user["sub"],
+        Investment.purchase_date >= start,
+        Investment.purchase_date < end
+    ).scalar() or 0
+
+    current_expenses = normal_expenses + pending_lent_expenses + investment_outflow
     
     # Previous month expenses
-    prev_expenses = db.query(func.sum(Expense.amount)).filter(
+    prev_normal_expenses = db.query(func.sum(Expense.amount)).filter(
         Expense.user_id == current_user["sub"],
         Expense.date >= prev_start,
         Expense.date < prev_end
     ).scalar() or 0
+
+    prev_pending_lent = db.query(func.sum(LentMoney.amount)).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "PENDING",
+        LentMoney.given_date >= prev_start,
+        LentMoney.given_date < prev_end
+    ).scalar() or 0
+
+    prev_investments = db.query(func.sum(Investment.amount_invested)).filter(
+        Investment.user_id == current_user["sub"],
+        Investment.purchase_date >= prev_start,
+        Investment.purchase_date < prev_end
+    ).scalar() or 0
+
+    prev_expenses = prev_normal_expenses + prev_pending_lent + prev_investments
     
     # Current month income
     current_income = db.query(func.sum(Income.amount)).filter(
@@ -70,9 +99,7 @@ def get_stats(
 
     receivable_amount = db.query(func.sum(LentMoney.amount)).filter(
         LentMoney.user_id == current_user["sub"],
-        LentMoney.status != "CANCELLED",
-        LentMoney.given_date < end,
-        ((LentMoney.returned_date == None) | (LentMoney.returned_date >= end))
+        LentMoney.status == "PENDING"
     ).scalar() or 0
 
     total_investments = db.query(func.sum(Investment.amount_invested)).filter(
@@ -168,10 +195,26 @@ def get_expense_overview(
         Expense.date < end
     ).group_by(func.date(Expense.date)).all()
     
-    return [
-        DailyExpenseResponse(date=str(exp.date), amount=float(exp.amount))
-        for exp in expenses
-    ]
+    totals: dict[str, float] = {str(exp.date): float(exp.amount) for exp in expenses}
+
+    lent = db.query(func.date(LentMoney.given_date).label("date"), func.sum(LentMoney.amount).label("amount")).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "PENDING",
+        LentMoney.given_date >= start,
+        LentMoney.given_date < end,
+    ).group_by(func.date(LentMoney.given_date)).all()
+    for item in lent:
+        totals[str(item.date)] = totals.get(str(item.date), 0) + float(item.amount)
+
+    investments = db.query(func.date(Investment.purchase_date).label("date"), func.sum(Investment.amount_invested).label("amount")).filter(
+        Investment.user_id == current_user["sub"],
+        Investment.purchase_date >= start,
+        Investment.purchase_date < end,
+    ).group_by(func.date(Investment.purchase_date)).all()
+    for item in investments:
+        totals[str(item.date)] = totals.get(str(item.date), 0) + float(item.amount)
+
+    return [DailyExpenseResponse(date=date, amount=amount) for date, amount in sorted(totals.items())]
 
 @router.get("/category-expenses", response_model=list[CategoryWiseExpenseResponse])
 def get_category_expenses(
@@ -184,11 +227,23 @@ def get_category_expenses(
 ):
     start, end, _ = month_bounds(month, year, from_date, to_date)
     
-    total = db.query(func.sum(Expense.amount)).filter(
+    normal_total = db.query(func.sum(Expense.amount)).filter(
         Expense.user_id == current_user["sub"],
         Expense.date >= start,
         Expense.date < end
-    ).scalar() or 1
+    ).scalar() or 0
+    lent_total_for_denominator = db.query(func.sum(LentMoney.amount)).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "PENDING",
+        LentMoney.given_date >= start,
+        LentMoney.given_date < end
+    ).scalar() or 0
+    investment_total_for_denominator = db.query(func.sum(Investment.amount_invested)).filter(
+        Investment.user_id == current_user["sub"],
+        Investment.purchase_date >= start,
+        Investment.purchase_date < end
+    ).scalar() or 0
+    total = normal_total + lent_total_for_denominator + investment_total_for_denominator or 1
     
     categories_exp = db.query(
         Category.name,
@@ -199,7 +254,7 @@ def get_category_expenses(
         Expense.date < end
     ).group_by(Category.id, Category.name).all()
     
-    return [
+    result = [
         CategoryWiseExpenseResponse(
             name=cat.name,
             value=float(cat.amount),
@@ -207,6 +262,22 @@ def get_category_expenses(
         )
         for cat in categories_exp
     ]
+    lent_total = db.query(func.sum(LentMoney.amount)).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "PENDING",
+        LentMoney.given_date >= start,
+        LentMoney.given_date < end,
+    ).scalar() or 0
+    if lent_total:
+        result.append(CategoryWiseExpenseResponse(name="Money Lent", value=float(lent_total), percentage=(float(lent_total) / float(total) * 100)))
+    investment_total = db.query(func.sum(Investment.amount_invested)).filter(
+        Investment.user_id == current_user["sub"],
+        Investment.purchase_date >= start,
+        Investment.purchase_date < end,
+    ).scalar() or 0
+    if investment_total:
+        result.append(CategoryWiseExpenseResponse(name="Investments", value=float(investment_total), percentage=(float(investment_total) / float(total) * 100)))
+    return result
 
 @router.get("/recent-transactions", response_model=list[TransactionResponse])
 def get_recent_transactions(

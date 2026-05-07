@@ -127,3 +127,60 @@ export interface BudgetStatus {
   limit: number;
   percentage: number;
 }
+
+export interface BudgetDetail {
+  id: string;
+  user_id: string;
+  category_id: string;
+  category_name?: string;
+  amount?: number;
+  limit_amount: number;
+  month: string;
+  year?: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+}
+
+export interface CalendarDay {
+  date: string;
+  expenses: number;
+  income: number;
+  transactions: Array<{ type: string; amount: number; title: string }>;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  category?: string;
+  amount: number;
+  payment_mode?: string;
+  frequency: string;
+  start_date: string;
+  next_due_date: string;
+  status: string;
+  notes?: string;
+}
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  target_date: string;
+  status: string;
+  notes?: string;
+  progress_percentage: number;
+}
+
+export interface UserPreference {
+  id: string;
+  user_id: string;
+  currency: string;
+  theme: string;
+  monthly_income_target: number;
+  monthly_budget_target: number;
+}

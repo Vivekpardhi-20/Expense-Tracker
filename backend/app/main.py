@@ -1,18 +1,37 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import get_settings
 from sqlalchemy import inspect, text
-from app.api.routes import auth, expenses, categories, dashboard, reports, income, lent_money, investments
+
+from app.core.config import get_settings
 from app.db.session import Base, engine
 from app.models import expense, user
+
+from app.api.routes import (
+    auth,
+    expenses,
+    categories,
+    dashboard,
+    reports,
+    income,
+    lent_money,
+    investments,
+    budgets,
+    calendar,
+    recurring,
+    goals,
+)
+
+from app.api.routes import settings as settings_routes
 
 settings = get_settings()
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
+
 def ensure_optional_columns():
     inspector = inspect(engine)
+
     additions = {
         "expenses": {
             "title": "VARCHAR",
@@ -25,6 +44,11 @@ def ensure_optional_columns():
         "categories": {
             "category_type": "VARCHAR DEFAULT 'EXPENSE'",
         },
+        "budgets": {
+            "category_name": "VARCHAR",
+            "amount": "FLOAT",
+            "year": "INTEGER",
+        },
     }
 
     with engine.begin() as connection:
@@ -32,10 +56,20 @@ def ensure_optional_columns():
             if not inspector.has_table(table_name):
                 continue
 
-            existing = {column["name"] for column in inspector.get_columns(table_name)}
+            existing = {
+                column["name"]
+                for column in inspector.get_columns(table_name)
+            }
+
             for column_name, column_type in columns.items():
                 if column_name not in existing:
-                    connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE {table_name} "
+                            f"ADD COLUMN {column_name} {column_type}"
+                        )
+                    )
+
 
 ensure_optional_columns()
 
@@ -65,19 +99,31 @@ app.include_router(reports.router)
 app.include_router(income.router)
 app.include_router(lent_money.router)
 app.include_router(investments.router)
+app.include_router(budgets.router)
+app.include_router(calendar.router)
+app.include_router(recurring.router)
+app.include_router(goals.router)
+app.include_router(settings_routes.router)
+
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "message": "API is running"}
+    return {
+        "status": "healthy",
+        "message": "API is running"
+    }
+
 
 @app.get("/")
 def root():
     return {
         "message": "Welcome to Expense Tracker API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
     }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
