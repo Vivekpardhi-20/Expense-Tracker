@@ -3,9 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from sqlalchemy import inspect, text
 from app.api.routes import auth, expenses, categories, dashboard, reports, income, lent_money, investments
-from app.db.session import engine
-from app.models.user import Base
-from app.models import expense
+from app.db.session import Base, engine
+from app.models import expense, user
 
 settings = get_settings()
 

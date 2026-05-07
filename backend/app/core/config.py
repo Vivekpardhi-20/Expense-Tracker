@@ -1,13 +1,16 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/expense_tracker"
+    DATABASE_URL: str
     
     # Security
-    SECRET_KEY: str = "your-secret-key-change-this"
+    JWT_SECRET: str = "change-this-local-secret"
+    SECRET_KEY: str | None = None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
@@ -21,4 +24,7 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    if not settings.SECRET_KEY:
+        settings.SECRET_KEY = settings.JWT_SECRET
+    return settings

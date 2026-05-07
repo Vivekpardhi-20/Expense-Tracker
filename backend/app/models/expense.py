@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Integer
 from datetime import datetime
-from app.models.user import Base
+from app.db.session import Base
 
 class Category(Base):
     __tablename__ = "categories"
