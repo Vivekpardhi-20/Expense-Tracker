@@ -1,4 +1,5 @@
 import React, { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { authService } from '../services/auth';
 import { User } from '../types';
 
@@ -19,6 +20,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getAuthRestoreStatus = (error: unknown) => {
+  if (axios.isAxiosError(error)) {
+    return error.response?.status;
+  }
+  return undefined;
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,8 +42,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         setUser(await authService.getCurrentUser());
       } catch (error) {
-        console.error('Unable to restore session:', error);
-        authService.logout();
+        const status = getAuthRestoreStatus(error);
+        if (status === 401 || status === 403) {
+          console.warn('Session expired. Please log in again.');
+          authService.logout();
+        } else {
+          console.warn('Unable to restore session. Showing login while the API becomes available.');
+        }
         setUser(null);
       } finally {
         setIsLoading(false);
