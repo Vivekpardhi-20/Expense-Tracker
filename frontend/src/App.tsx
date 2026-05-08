@@ -12,6 +12,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { Recurring } from './pages/Recurring';
 import { Goals } from './pages/Goals';
 import { Settings } from './pages/Settings';
+import { InstallPrompt } from './components/InstallPrompt';
 import './index.css';
 
 export type PageType =
@@ -70,13 +71,19 @@ function AppShell() {
   }
 
   if (!isAuthenticated) {
-    return <AuthPage />;
+    return (
+      <>
+        <AuthPage />
+        <InstallPrompt />
+      </>
+    );
   }
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} currentPage={currentPage} onNavigate={setCurrentPage} />
       <div className="min-w-0 flex-1">{renderPage()}</div>
+      <InstallPrompt />
     </div>
   );
 }

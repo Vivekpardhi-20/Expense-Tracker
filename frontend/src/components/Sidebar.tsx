@@ -54,11 +54,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage
       </button>
 
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-full w-64 flex-col bg-slate-950 text-white shadow-2xl transition-transform duration-300 md:sticky md:top-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-dvh w-64 flex-col bg-slate-950 text-white shadow-2xl transition-transform duration-300 md:sticky md:top-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="flex h-full flex-col p-5">
+        <div className="flex h-full flex-col overflow-y-auto p-5">
           <div className="mb-8 flex items-center gap-3">
             <div className="rounded-lg bg-blue-600 p-2 shadow-lg shadow-blue-950/30">
               <WalletCards className="h-6 w-6 text-white" />
