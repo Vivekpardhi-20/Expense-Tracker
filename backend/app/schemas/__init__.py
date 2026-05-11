@@ -133,6 +133,21 @@ class BudgetStatusResponse(BaseModel):
     limit: float
     percentage: float
 
+class DashboardHistoryResponse(BaseModel):
+    id: str
+    source_id: str
+    source_type: str
+    source_category_id: Optional[str] = None
+    type: str
+    title: str
+    category: str
+    mode: Optional[str] = None
+    amount: float
+    impact: str
+    date: str
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
 class LentMoneyBase(BaseModel):
     person_name: str
     amount: float = Field(gt=0)

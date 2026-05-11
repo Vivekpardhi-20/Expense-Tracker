@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardStats } from '../components/DashboardStats';
 import { ExpenseOverview } from '../components/ExpenseOverview';
 import { CategoryExpenses } from '../components/CategoryExpenses';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { BudgetOverview } from '../components/BudgetOverview';
 import { Header } from '../components/Header';
+import { DashboardHistoryModal } from '../components/DashboardHistoryModal';
 import { dashboardService } from '../services/dashboard';
-import { DashboardStats as DashboardStatsType, DailyExpense, CategoryWiseExpense, Transaction, BudgetStatus } from '../types';
+import { DashboardHistoryType, DashboardStats as DashboardStatsType, DailyExpense, CategoryWiseExpense, Transaction, BudgetStatus } from '../types';
 
 const emptyStats: DashboardStatsType = {
   total_expenses: 0,
@@ -29,38 +30,39 @@ export const Dashboard: React.FC = () => {
   const [budgets, setBudgets] = useState<BudgetStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [historyType, setHistoryType] = useState<DashboardHistoryType | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [statsData, expenseData, categoryData, transactionData, budgetData] = await Promise.all([
+        dashboardService.getStats(selectedMonth),
+        dashboardService.getExpenseOverview(selectedMonth),
+        dashboardService.getCategoryWiseExpenses(selectedMonth),
+        dashboardService.getRecentTransactions(10, selectedMonth),
+        dashboardService.getBudgetStatus(selectedMonth),
+      ]);
+
+      setStats(statsData);
+      setExpenses(expenseData);
+      setCategoryExpenses(categoryData);
+      setTransactions(transactionData);
+      setBudgets(budgetData);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setStats(emptyStats);
+      setExpenses([]);
+      setCategoryExpenses([]);
+      setTransactions([]);
+      setBudgets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedMonth]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [statsData, expenseData, categoryData, transactionData, budgetData] = await Promise.all([
-          dashboardService.getStats(selectedMonth),
-          dashboardService.getExpenseOverview(selectedMonth),
-          dashboardService.getCategoryWiseExpenses(selectedMonth),
-          dashboardService.getRecentTransactions(10, selectedMonth),
-          dashboardService.getBudgetStatus(selectedMonth),
-        ]);
-
-        setStats(statsData);
-        setExpenses(expenseData);
-        setCategoryExpenses(categoryData);
-        setTransactions(transactionData);
-        setBudgets(budgetData);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setStats(emptyStats);
-        setExpenses([]);
-        setCategoryExpenses([]);
-        setTransactions([]);
-        setBudgets([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [selectedMonth]);
+  }, [fetchData]);
 
   if (loading || !stats) {
     return (
@@ -77,7 +79,7 @@ export const Dashboard: React.FC = () => {
     <div className="min-h-screen">
       <Header selectedMonth={selectedMonth} onDateRangeChange={setSelectedMonth} />
       <main className="p-4 sm:p-6 lg:p-8">
-        <DashboardStats stats={stats} />
+        <DashboardStats stats={stats} onCardClick={setHistoryType} />
         <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_520px]">
           <div className="min-w-0">
             <ExpenseOverview data={expenses} />
@@ -91,6 +93,14 @@ export const Dashboard: React.FC = () => {
           <BudgetOverview budgets={budgets} />
         </div>
       </main>
+      {historyType && (
+        <DashboardHistoryModal
+          type={historyType}
+          month={selectedMonth}
+          onClose={() => setHistoryType(null)}
+          onChanged={fetchData}
+        />
+      )}
     </div>
   );
 };

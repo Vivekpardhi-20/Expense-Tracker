@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { DashboardStats, DailyExpense, CategoryWiseExpense, BudgetStatus, Transaction } from '../types';
+import { DashboardHistoryItem, DashboardHistoryType, DashboardStats, DailyExpense, CategoryWiseExpense, BudgetStatus, Transaction } from '../types';
 import { dashboardParams } from '../utils/dateFilters';
 
 export const dashboardService = {
@@ -34,6 +34,13 @@ export const dashboardService = {
   getBudgetStatus: async (month?: string) => {
     const response = await apiClient.get<BudgetStatus[]>('/api/dashboard/budget-status', {
       params: month ? dashboardParams(month) : undefined,
+    });
+    return response.data;
+  },
+
+  getHistory: async (type: DashboardHistoryType, month?: string) => {
+    const response = await apiClient.get<DashboardHistoryItem[]>('/api/dashboard/history', {
+      params: { type, ...(month ? dashboardParams(month) : {}) },
     });
     return response.data;
   },

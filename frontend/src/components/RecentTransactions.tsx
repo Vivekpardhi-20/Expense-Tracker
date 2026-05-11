@@ -3,7 +3,7 @@ import { Banknote, Receipt } from 'lucide-react';
 
 interface RecentTransaction {
   id: string;
-  type: 'expense' | 'income' | 'lent' | 'investment';
+  type: 'expense' | 'income' | 'lent' | 'money_returned' | 'investment';
   category: string;
   amount: number;
   date: string;
@@ -33,7 +33,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transact
           const isExpenseLike = transaction.type === 'expense' || transaction.type === 'lent' || transaction.type === 'investment';
 
           return (
-            <div key={transaction.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+            <div key={`${transaction.type}-${transaction.id}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
               <div className="flex min-w-0 items-center gap-3">
                 <div className={`rounded-lg p-2 ${isExpenseLike ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isExpenseLike ? <Receipt className="h-5 w-5" /> : <Banknote className="h-5 w-5" />}

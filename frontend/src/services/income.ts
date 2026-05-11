@@ -21,6 +21,11 @@ export const incomeService = {
     return response.data;
   },
 
+  updateIncome: async (id: string, data: Partial<Income>) => {
+    const response = await apiClient.put<Income>(`/api/income/${id}`, data);
+    return response.data;
+  },
+
   deleteIncome: async (id: string) => {
     await apiClient.delete(`/api/income/${id}`);
   },

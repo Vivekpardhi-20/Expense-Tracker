@@ -5,6 +5,7 @@ from app.db.session import get_db
 from app.models.expense import Expense, Income, Budget, Category, LentMoney, Investment
 from app.schemas import (
     DashboardStatsResponse,
+    DashboardHistoryResponse,
     DailyExpenseResponse,
     CategoryWiseExpenseResponse,
     TransactionResponse,
@@ -14,6 +15,8 @@ from app.core.security import get_current_user
 from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+HISTORY_TYPES = {"expenses", "income", "savings", "receivable", "investments", "transactions"}
 
 def month_bounds(month: str | int = None, year: int = None, from_date: str = None, to_date: str = None) -> tuple[datetime, datetime, str]:
     if from_date and to_date:
@@ -33,6 +36,136 @@ def month_bounds(month: str | int = None, year: int = None, from_date: str = Non
 
     next_month = datetime(start.year + int(start.month == 12), 1 if start.month == 12 else start.month + 1, 1)
     return start, next_month, start.strftime("%Y-%m")
+
+def movement_sort_key(item: DashboardHistoryResponse):
+    return item.date
+
+def expense_history_rows(db: Session, user_id: str, start: datetime, end: datetime) -> list[DashboardHistoryResponse]:
+    rows: list[DashboardHistoryResponse] = []
+    expenses = db.query(Expense).filter(
+        Expense.user_id == user_id,
+        Expense.date >= start,
+        Expense.date < end
+    ).all()
+    for exp in expenses:
+        category = db.query(Category).filter(Category.id == exp.category_id).first()
+        rows.append(DashboardHistoryResponse(
+            id=f"expense-{exp.id}",
+            source_id=exp.id,
+            source_type="expense",
+            source_category_id=exp.category_id,
+            type="Expense",
+            title=exp.title or exp.description or "Expense",
+            category=category.name if category else exp.category_id,
+            mode=exp.payment_mode,
+            amount=float(exp.amount),
+            impact="EXPENSE",
+            date=exp.date.strftime("%Y-%m-%d"),
+            status="Recorded",
+            notes=exp.notes or exp.description,
+        ))
+    return rows
+
+def income_history_rows(db: Session, user_id: str, start: datetime, end: datetime) -> list[DashboardHistoryResponse]:
+    rows: list[DashboardHistoryResponse] = []
+    income = db.query(Income).filter(
+        Income.user_id == user_id,
+        Income.date >= start,
+        Income.date < end
+    ).all()
+    for item in income:
+        rows.append(DashboardHistoryResponse(
+            id=f"income-{item.id}",
+            source_id=item.id,
+            source_type="income",
+            type="Income",
+            title=item.title or item.source,
+            category=item.source,
+            mode=None,
+            amount=float(item.amount),
+            impact="INCOME",
+            date=item.date.strftime("%Y-%m-%d"),
+            status="Received",
+            notes=item.notes or item.description,
+        ))
+    return rows
+
+def lent_history_rows(
+    db: Session,
+    user_id: str,
+    start: datetime,
+    end: datetime,
+    pending_only: bool = False,
+    include_returned_movements: bool = False,
+) -> list[DashboardHistoryResponse]:
+    query = db.query(LentMoney).filter(LentMoney.user_id == user_id)
+    if pending_only:
+        query = query.filter(LentMoney.status == "PENDING", LentMoney.given_date >= start, LentMoney.given_date < end)
+    else:
+        query = query.filter(LentMoney.given_date >= start, LentMoney.given_date < end)
+    rows: list[DashboardHistoryResponse] = []
+    for item in query.all():
+        rows.append(DashboardHistoryResponse(
+            id=f"lent-{item.id}",
+            source_id=item.id,
+            source_type="lent_money",
+            type="Money Lent",
+            title=f"Money lent to {item.person_name}",
+            category=item.person_name,
+            mode=item.payment_mode,
+            amount=float(item.amount),
+            impact="MONEY_LENT",
+            date=item.given_date.strftime("%Y-%m-%d"),
+            status=item.status,
+            notes=item.notes,
+        ))
+    if include_returned_movements:
+        returned = db.query(LentMoney).filter(
+            LentMoney.user_id == user_id,
+            LentMoney.status == "RETURNED",
+            LentMoney.returned_date >= start,
+            LentMoney.returned_date < end,
+        ).all()
+        for item in returned:
+            rows.append(DashboardHistoryResponse(
+                id=f"returned-{item.id}",
+                source_id=item.id,
+                source_type="lent_money",
+                type="Money Returned",
+                title=f"Money returned by {item.person_name}",
+                category=item.person_name,
+                mode=item.payment_mode,
+                amount=float(item.amount),
+                impact="MONEY_RETURNED",
+                date=item.returned_date.strftime("%Y-%m-%d"),
+                status=item.status,
+                notes=f"Linked Money Lent ID: {item.id}" + (f" - {item.notes}" if item.notes else ""),
+            ))
+    return rows
+
+def investment_history_rows(db: Session, user_id: str, start: datetime, end: datetime) -> list[DashboardHistoryResponse]:
+    rows: list[DashboardHistoryResponse] = []
+    investments = db.query(Investment).filter(
+        Investment.user_id == user_id,
+        Investment.purchase_date >= start,
+        Investment.purchase_date < end
+    ).all()
+    for item in investments:
+        rows.append(DashboardHistoryResponse(
+            id=f"investment-{item.id}",
+            source_id=item.id,
+            source_type="investment",
+            type="Investment",
+            title=item.investment_name,
+            category=item.investment_type,
+            mode=item.broker_name,
+            amount=float(item.amount_invested),
+            impact="INVESTMENT",
+            date=item.purchase_date.strftime("%Y-%m-%d"),
+            status="Invested",
+            notes=item.notes,
+        ))
+    return rows
 
 @router.get("/stats", response_model=DashboardStatsResponse)
 def get_stats(
@@ -136,6 +269,11 @@ def get_stats(
         LentMoney.user_id == current_user["sub"],
         LentMoney.given_date >= start,
         LentMoney.given_date < end
+    ).scalar() + db.query(func.count(LentMoney.id)).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "RETURNED",
+        LentMoney.returned_date >= start,
+        LentMoney.returned_date < end
     ).scalar() + db.query(func.count(Investment.id)).filter(
         Investment.user_id == current_user["sub"],
         Investment.purchase_date >= start,
@@ -154,6 +292,11 @@ def get_stats(
         LentMoney.user_id == current_user["sub"],
         LentMoney.given_date >= prev_start,
         LentMoney.given_date < prev_end
+    ).scalar() + db.query(func.count(LentMoney.id)).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "RETURNED",
+        LentMoney.returned_date >= prev_start,
+        LentMoney.returned_date < prev_end
     ).scalar() + db.query(func.count(Investment.id)).filter(
         Investment.user_id == current_user["sub"],
         Investment.purchase_date >= prev_start,
@@ -308,6 +451,13 @@ def get_recent_transactions(
         LentMoney.given_date < end
     ).order_by(LentMoney.given_date.desc()).limit(limit).all()
 
+    returned_entries = db.query(LentMoney).filter(
+        LentMoney.user_id == current_user["sub"],
+        LentMoney.status == "RETURNED",
+        LentMoney.returned_date >= start,
+        LentMoney.returned_date < end
+    ).order_by(LentMoney.returned_date.desc()).limit(limit).all()
+
     investments = db.query(Investment).filter(
         Investment.user_id == current_user["sub"],
         Investment.purchase_date >= start,
@@ -358,6 +508,20 @@ def get_recent_transactions(
     transactions.extend(
         TransactionResponse(
             id=item.id,
+            type="money_returned",
+            category="Money Returned",
+            amount=item.amount,
+            date=item.returned_date.strftime("%Y-%m-%d"),
+            title=f"Money returned by {item.person_name}",
+            description=f"Linked Money Lent ID: {item.id}",
+        )
+        for item in returned_entries
+        if item.returned_date
+    )
+
+    transactions.extend(
+        TransactionResponse(
+            id=item.id,
             type="investment",
             category=item.investment_type,
             amount=item.amount_invested,
@@ -369,6 +533,51 @@ def get_recent_transactions(
     )
     
     return sorted(transactions, key=lambda item: item.date, reverse=True)[:limit]
+
+@router.get("/history", response_model=list[DashboardHistoryResponse])
+def get_dashboard_history(
+    type: str,
+    month: str = None,
+    year: int = None,
+    from_date: str = None,
+    to_date: str = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if type not in HISTORY_TYPES:
+        return []
+
+    start, end, _ = month_bounds(month, year, from_date, to_date)
+    user_id = current_user["sub"]
+
+    if type == "expenses":
+        rows = (
+            expense_history_rows(db, user_id, start, end)
+            + lent_history_rows(db, user_id, start, end, pending_only=True)
+            + investment_history_rows(db, user_id, start, end)
+        )
+    elif type == "income":
+        rows = income_history_rows(db, user_id, start, end)
+    elif type == "savings":
+        rows = (
+            income_history_rows(db, user_id, start, end)
+            + expense_history_rows(db, user_id, start, end)
+            + lent_history_rows(db, user_id, start, end, include_returned_movements=True)
+            + investment_history_rows(db, user_id, start, end)
+        )
+    elif type == "receivable":
+        rows = lent_history_rows(db, user_id, start, end)
+    elif type == "investments":
+        rows = investment_history_rows(db, user_id, start, end)
+    else:
+        rows = (
+            income_history_rows(db, user_id, start, end)
+            + expense_history_rows(db, user_id, start, end)
+            + lent_history_rows(db, user_id, start, end, include_returned_movements=True)
+            + investment_history_rows(db, user_id, start, end)
+        )
+
+    return sorted(rows, key=movement_sort_key, reverse=True)
 
 @router.get("/budget-status", response_model=list[BudgetStatusResponse])
 def get_budget_status(

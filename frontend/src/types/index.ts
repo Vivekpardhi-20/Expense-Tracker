@@ -77,12 +77,30 @@ export interface DashboardStats {
 
 export interface Transaction {
   id: string;
-  type: 'expense' | 'income' | 'lent' | 'investment';
+  type: 'expense' | 'income' | 'lent' | 'money_returned' | 'investment';
   category: string;
   amount: number;
   date: string;
   title: string;
   description: string;
+}
+
+export type DashboardHistoryType = 'expenses' | 'income' | 'savings' | 'receivable' | 'investments' | 'transactions';
+
+export interface DashboardHistoryItem {
+  id: string;
+  source_id: string;
+  source_type: 'expense' | 'income' | 'lent_money' | 'investment';
+  source_category_id?: string;
+  type: 'Expense' | 'Income' | 'Money Lent' | 'Money Returned' | 'Investment';
+  title: string;
+  category: string;
+  mode?: string;
+  amount: number;
+  impact: 'INCOME' | 'EXPENSE' | 'MONEY_LENT' | 'MONEY_RETURNED' | 'INVESTMENT';
+  date: string;
+  status?: string;
+  notes?: string;
 }
 
 export interface LentMoney {

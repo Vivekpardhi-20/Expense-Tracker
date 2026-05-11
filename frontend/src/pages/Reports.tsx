@@ -4,7 +4,7 @@ import { Header } from '../components/Header';
 import { dashboardService } from '../services/dashboard';
 import { investmentService } from '../services/investment';
 import { lentMoneyService } from '../services/lentMoney';
-import { BudgetStatus, CategoryWiseExpense, DashboardStats, Investment, LentMoney } from '../types';
+import { BudgetStatus, CategoryWiseExpense, DashboardHistoryItem, DashboardStats, Investment, LentMoney } from '../types';
 
 const formatMoney = (value: number) => `Rs. ${value.toLocaleString('en-IN')}`;
 
@@ -28,18 +28,21 @@ export const Reports: React.FC = () => {
   const [budgets, setBudgets] = useState<BudgetStatus[]>([]);
   const [lentMoney, setLentMoney] = useState<LentMoney[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [moneyMovements, setMoneyMovements] = useState<DashboardHistoryItem[]>([]);
 
   useEffect(() => {
     const loadReports = async () => {
       try {
-        const [summary, categoryData, budgetData] = await Promise.all([
+        const [summary, categoryData, budgetData, movementData] = await Promise.all([
           dashboardService.getStats(selectedMonth),
           dashboardService.getCategoryWiseExpenses(selectedMonth),
           dashboardService.getBudgetStatus(selectedMonth),
+          dashboardService.getHistory('transactions', selectedMonth),
         ]);
         setStats(summary);
         setCategories(categoryData);
         setBudgets(budgetData);
+        setMoneyMovements(movementData);
         setLentMoney(await lentMoneyService.list(selectedMonth));
         setInvestments(await investmentService.list(selectedMonth));
       } catch (error) {
@@ -47,6 +50,7 @@ export const Reports: React.FC = () => {
         setStats(emptyStats);
         setCategories([]);
         setBudgets([]);
+        setMoneyMovements([]);
       }
     };
 
@@ -135,6 +139,41 @@ export const Reports: React.FC = () => {
               </div>
             )}
           </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">Money Movement Ledger</h2>
+          {moneyMovements.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">No money movements found for this month.</div>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[920px] text-sm">
+                <thead className="bg-slate-50 text-left text-slate-600">
+                  <tr>
+                    {['Date', 'Type', 'Title / Name', 'Category / Person', 'Amount', 'Impact', 'Status'].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {moneyMovements.map((movement) => {
+                    const isNegative = ['EXPENSE', 'MONEY_LENT', 'INVESTMENT'].includes(movement.impact);
+                    return (
+                      <tr key={movement.id}>
+                        <td className="px-4 py-3">{new Date(movement.date).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{movement.type}</td>
+                        <td className="px-4 py-3">{movement.title}</td>
+                        <td className="px-4 py-3">{movement.category}</td>
+                        <td className={`px-4 py-3 font-bold ${isNegative ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {isNegative ? '-' : '+'}Rs. {movement.amount.toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-4 py-3">{movement.impact}</td>
+                        <td className="px-4 py-3">{movement.status || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">

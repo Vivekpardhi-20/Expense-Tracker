@@ -50,6 +50,26 @@ def create_income(
     return db_income
 
 
+@router.put("/{income_id}", response_model=IncomeResponse)
+def update_income(
+    income_id: str,
+    income: IncomeCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db_income = db.query(Income).filter(Income.id == income_id, Income.user_id == current_user["sub"]).first()
+
+    if not db_income:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    for key, value in income.dict().items():
+        setattr(db_income, key, value)
+
+    db.commit()
+    db.refresh(db_income)
+    return db_income
+
+
 @router.delete("/{income_id}")
 def delete_income(
     income_id: str,
